@@ -1,0 +1,9 @@
+﻿  main.cpp
+C:\Users\HEO JAEUK\Desktop\Study\Mouse\Mouse\include\GLFW\glfw3.h(3235,1): warning C4819: The file contains a character that cannot be represented in the current code page (949). Save the file in Unicode format to prevent data loss
+  (compiling source file 'src/main.cpp')
+  
+C:\Users\HEO JAEUK\Desktop\Study\Mouse\Mouse\src\main.cpp(23,10): warning C4305: 'return': truncation from 'int' to 'bool'
+C:\Users\HEO JAEUK\Desktop\Study\Mouse\Mouse\src\main.cpp(101,13): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\HEO JAEUK\Desktop\Study\Mouse\Mouse\src\main.cpp(143,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Mouse.vcxproj -> C:\Users\HEO JAEUK\Desktop\Study\Mouse\x64\Debug\Mouse.exe
