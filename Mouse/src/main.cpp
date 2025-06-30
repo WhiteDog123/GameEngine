@@ -124,6 +124,38 @@ void DrawLogWindow()
 	ImGui::End();
 }
 
+void DrawMouseDebug(GLFWwindow* window)
+{
+	ImGui::Begin("Mouse Debug");
+
+	//ImGui ¡¬«•∞Ë ±‚¡ÿ
+	ImVec2 mousePos = ImGui::GetMousePos();
+	ImGui::Text("ImGui Mouse Pos: (%.1f, %.1f)", mousePos.x, mousePos.y);
+
+	//GLFW ±‚¡ÿ ¡¬«•∞Ë
+	double xpos, ypos;
+	glfwGetCursorPos(window, &xpos, &ypos);
+	ImGui::Text("GLFW Mouse Pos: (%.1f, %.1f)", xpos, ypos);
+
+	bool leftDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+	bool rightDown = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+
+	ImGui::Text("Left Button: %s", leftDown ? "Held" : "Released");
+	ImGui::Text("Right Button: %s", rightDown? "Held" : "Released");
+
+	if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		logs.push_back("Left Click at ("+std::to_string(mousePos.x)+", " + std::to_string(mousePos.y)+")");
+	}
+	if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+	{
+		logs.push_back("Right Click at (" + std::to_string(mousePos.x) + ", " + std::to_string(mousePos.y) + ")");
+	}
+
+
+	ImGui::End();
+}
+
 int main() {
 	GLFWwindow* window = nullptr;
 	if(!InitGLFW(&window) || !InitGLAD())
@@ -156,6 +188,7 @@ int main() {
 		DrawColorPicker(bgColor);
 		DrawPerfStats(deltaTime);
 		DrawLogWindow();
+		DrawMouseDebug(window);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
