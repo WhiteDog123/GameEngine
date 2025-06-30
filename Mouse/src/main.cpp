@@ -197,6 +197,21 @@ void DrawKeyDebug(GLFWwindow* window)
 	ImGui::End();
 }
 
+void DrawSceneView(GLFWwindow* window)
+{
+	ImGui::Begin("Scene");
+
+	ImVec2 p0 = ImGui::GetWindowPos();
+	ImVec2 p1 = ImVec2(p0.x + ImGui::GetWindowWidth(), p0.y + ImGui::GetWindowHeight());
+
+	ImGui::GetWindowDrawList()->AddRectFilled(p0, p1, IM_COL32(50, 50, 50, 255));
+
+	ImVec2 mousePos = ImGui::GetMousePos();
+	ImGui::Text("Mouse Pos in Scene: (%.1f, %.1f)", mousePos.x - p0.x, mousePos.y - p0.y);
+
+	ImGui::End();
+}
+
 int main() {
 	GLFWwindow* window = nullptr;
 	if(!InitGLFW(&window) || !InitGLAD())
@@ -231,6 +246,7 @@ int main() {
 		DrawLogWindow();
 		DrawMouseDebug(window);
 		DrawKeyDebug(window);
+		DrawSceneView(window);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
