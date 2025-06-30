@@ -156,6 +156,47 @@ void DrawMouseDebug(GLFWwindow* window)
 	ImGui::End();
 }
 
+static bool lastKeyState[1024] = { false };
+
+void DrawKeyDebug(GLFWwindow* window)
+{
+	ImGui::Begin("Keyboard Debug");
+
+	struct {
+		int key;
+		const char* name;
+	} keys[] = {
+		{ GLFW_KEY_W, "W" },
+		{ GLFW_KEY_A, "A" },
+		{ GLFW_KEY_S, "S" },
+		{ GLFW_KEY_D, "D" },
+		{ GLFW_KEY_ESCAPE, "ESC" }
+	};
+
+	for (auto& k : keys)
+	{
+		int state = glfwGetKey(window, k.key);
+
+		ImGui::Text("%s: %s", k.name, state == GLFW_PRESS ? "Pressed" : "Released");
+
+		if (k.key == GLFW_KEY_ESCAPE && state == GLFW_PRESS)
+		{
+			glfwSetWindowShouldClose(window, true);
+		}
+
+		if (state == GLFW_PRESS && !lastKeyState[k.key])
+		{
+			logs.push_back(std::string(k.name) + " Pressed");
+		}
+		if (state == GLFW_RELEASE && lastKeyState[k.key])
+		{
+			logs.push_back(std::string(k.name) + " Released");
+		}
+		lastKeyState[k.key] = (state == GLFW_PRESS);
+	}
+	ImGui::End();
+}
+
 int main() {
 	GLFWwindow* window = nullptr;
 	if(!InitGLFW(&window) || !InitGLAD())
@@ -189,6 +230,7 @@ int main() {
 		DrawPerfStats(deltaTime);
 		DrawLogWindow();
 		DrawMouseDebug(window);
+		DrawKeyDebug(window);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
