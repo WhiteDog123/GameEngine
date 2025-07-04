@@ -227,6 +227,7 @@ void DrawInspector()
 	ImGui::ColorEdit4("Color", (float*)&R.color);
 	ImGui::End();
 }
+static bool playMode = false;
 
 void DrawSceneView(GLFWwindow* window)
 {
@@ -239,38 +240,40 @@ void DrawSceneView(GLFWwindow* window)
 
 	draw->AddRectFilled(p0, ImVec2(p0.x + avail.x, p0.y + avail.y),
 		IM_COL32(50, 50, 50, 255));
-	
-	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	if (!playMode)
 	{
-		ImVec2 mp = ImGui::GetMousePos();
-		float lx = mp.x - p0.x, ly = mp.y - p0.y;
-		
-		selectedIndex = -1;
-		for (int i = int(objects.size()) - 1; i >= 0; --i)
+		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		{
-			auto& R = objects[i];
-			if (lx >= R.x && lx <= R.x + R.w 
-				&& ly >= R.y && ly <= R.y + R.h)
+			ImVec2 mp = ImGui::GetMousePos();
+			float lx = mp.x - p0.x, ly = mp.y - p0.y;
+
+			selectedIndex = -1;
+			for (int i = int(objects.size()) - 1; i >= 0; --i)
 			{
-				selectedIndex = i;
-				dragOffset = ImVec2(lx - R.x, ly - R.y);
-				break;
+				auto& R = objects[i];
+				if (lx >= R.x && lx <= R.x + R.w
+					&& ly >= R.y && ly <= R.y + R.h)
+				{
+					selectedIndex = i;
+					dragOffset = ImVec2(lx - R.x, ly - R.y);
+					break;
+				}
 			}
 		}
-	}
 
-	if (selectedIndex >=0
-		&& ImGui::IsWindowHovered()
-		&& ImGui::IsMouseDown(ImGuiMouseButton_Left))
-	{
-		ImVec2 mp = ImGui::GetMousePos();
-		float nx = (mp.x - p0.x) - dragOffset.x;
-		float ny = (mp.y - p0.y) - dragOffset.y;
+		if (selectedIndex >= 0
+			&& ImGui::IsWindowHovered()
+			&& ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			ImVec2 mp = ImGui::GetMousePos();
+			float nx = (mp.x - p0.x) - dragOffset.x;
+			float ny = (mp.y - p0.y) - dragOffset.y;
 
-		nx = Clamp(nx, 0.0f, avail.x - objects[selectedIndex].w);
-		ny = Clamp(ny, 0.0f, avail.y - objects[selectedIndex].h);
-		objects[selectedIndex].x = nx;
-		objects[selectedIndex].y = ny;
+			nx = Clamp(nx, 0.0f, avail.x - objects[selectedIndex].w);
+			ny = Clamp(ny, 0.0f, avail.y - objects[selectedIndex].h);
+			objects[selectedIndex].x = nx;
+			objects[selectedIndex].y = ny;
+		}
 	}
 
 	for (int i = 0; i < (int)objects.size(); ++i)
@@ -322,13 +325,40 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		ImGui::Begin("Control", nullptr,
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_AlwaysAutoResize);
+
+		if (ImGui::Button(playMode ? "Stop" : "Play"))
+		{
+			playMode = !playMode;
+		}
+		ImGui::End();
+
 		DrawColorPicker(bgColor);
 		DrawPerfStats(deltaTime);
 		DrawLogWindow();
 		DrawMouseDebug(window);
 		DrawKeyDebug(window);
-		DrawSceneView(window);
-		DrawInspector();
+
+		if (playMode)
+		{
+			ImVec2 p0 = ImGui::GetCursorScreenPos();
+			ImVec2 avail = ImGui::GetContentRegionAvail();
+			for (auto& R : objects)
+			{
+				R.y += 25.0f * deltaTime;
+				R.y = Clamp(R.y, 0.0f, avail.y - R.h);
+			}
+
+			DrawSceneView(window);
+		}
+		else
+		{
+			DrawSceneView(window);
+			DrawInspector();
+		}
+
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
