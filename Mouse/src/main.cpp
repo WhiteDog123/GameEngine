@@ -220,8 +220,8 @@ void DrawInspector()
 	ImGui::DragFloat("X", &rectX, 1.0f, 0.0f, ImGui::GetWindowWidth() - rectW);
 	ImGui::DragFloat("Y", &rectY, 1.0f, 0.0f, ImGui::GetWindowHeight() - rectH);
 
-	ImGui::DragFloat("Width", &rectW, 1.0f, 1.0f, ImGui::GetWindowWidth());
-	ImGui::DragFloat("Height", &rectH, 1.0f, 1.0f, ImGui::GetWindowHeight());
+	ImGui::DragFloat("Width", &rectW, 1.0f, 1.0f, 100);
+	ImGui::DragFloat("Height", &rectH, 1.0f, 1.0f, 100);
 
 	ImGui::ColorEdit4("Color", (float*)&rectColor);
 	ImGui::End();
@@ -242,13 +242,13 @@ void DrawSceneView(GLFWwindow* window)
 	{
 		ImVec2 mp = ImGui::GetMousePos();
 		float lx = mp.x - p0.x, ly = mp.y - p0.y;
-		bool over = (lx >= rectX && lx <= rectX + 50 && ly >= rectY && ly <= rectY + 50);
+		bool over = (lx >= rectX && lx <= rectX + rectW && ly >= rectY && ly <= rectY + rectH);
 		rectSelected = over;
 
 		if (over) dragOffset = ImVec2(lx - rectX, ly - rectY);
 	}
 
-	if (rectSelected && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+	if (rectSelected && ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
 	{
 		ImVec2 mp = ImGui::GetMousePos();
 		rectX = (mp.x - p0.x) - dragOffset.x;
