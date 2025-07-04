@@ -198,13 +198,13 @@ void DrawKeyDebug(GLFWwindow* window)
 	ImGui::End();
 }
 
-static float rectW = 50.0f;
-static float rectH = 50.0f;
-static ImVec4 rectColor = ImVec4(1, 0, 0, 1);
-static float rectX = 100.0f;
-static float rectY = 100.0f; 
+struct Rect {
+	float x, y, w, h;
+	ImVec4 color;
+};
 
-static bool rectSelected = false;
+static std::vector<Rect> objects;
+static int selectedIndex = -1;
 static ImVec2 dragOffset;
 
 inline float Clamp(float v, float min, float max) {
@@ -213,17 +213,18 @@ inline float Clamp(float v, float min, float max) {
 
 void DrawInspector()
 {
-	if (!rectSelected) return;
+	if (selectedIndex < 0) return;
 
+	auto& R = objects[selectedIndex];
 	ImGui::Begin("Inspector");
 
-	ImGui::DragFloat("X", &rectX, 1.0f, 0.0f, ImGui::GetWindowWidth() - rectW);
-	ImGui::DragFloat("Y", &rectY, 1.0f, 0.0f, ImGui::GetWindowHeight() - rectH);
+	ImGui::DragFloat("X", &R.x, 1.0f, 0.0f, ImGui::GetWindowWidth() - R.w);
+	ImGui::DragFloat("Y", &R.y, 1.0f, 0.0f, ImGui::GetWindowHeight() - R.h);
 
-	ImGui::DragFloat("Width", &rectW, 1.0f, 1.0f, 100);
-	ImGui::DragFloat("Height", &rectH, 1.0f, 1.0f, 100);
+	ImGui::DragFloat("Width", &R.w, 1.0f, 1.0f, 100);
+	ImGui::DragFloat("Height", &R.h, 1.0f, 1.0f, 100);
 
-	ImGui::ColorEdit4("Color", (float*)&rectColor);
+	ImGui::ColorEdit4("Color", (float*)&R.color);
 	ImGui::End();
 }
 
@@ -232,49 +233,60 @@ void DrawSceneView(GLFWwindow* window)
 	ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoMove);
 
 
-	ImVec2 p0 = ImGui::GetWindowPos();
-	ImVec2 p1 = ImVec2(p0.x + ImGui::GetWindowWidth(), p0.y + ImGui::GetWindowHeight());
+	ImVec2 p0 = ImGui::GetCursorScreenPos();
+	ImVec2 avail = ImGui::GetContentRegionAvail();
 	ImDrawList* draw = ImGui::GetWindowDrawList();
 
-	draw->AddRectFilled(p0, p1, IM_COL32(50, 50, 50, 255));
+	draw->AddRectFilled(p0, ImVec2(p0.x + avail.x, p0.y + avail.y),
+		IM_COL32(50, 50, 50, 255));
 	
 	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 	{
 		ImVec2 mp = ImGui::GetMousePos();
 		float lx = mp.x - p0.x, ly = mp.y - p0.y;
-		bool over = (lx >= rectX && lx <= rectX + rectW && ly >= rectY && ly <= rectY + rectH);
-		rectSelected = over;
-
-		if (over) dragOffset = ImVec2(lx - rectX, ly - rectY);
+		
+		selectedIndex = -1;
+		for (int i = int(objects.size()) - 1; i >= 0; --i)
+		{
+			auto& R = objects[i];
+			if (lx >= R.x && lx <= R.x + R.w 
+				&& ly >= R.y && ly <= R.y + R.h)
+			{
+				selectedIndex = i;
+				dragOffset = ImVec2(lx - R.x, ly - R.y);
+				break;
+			}
+		}
 	}
 
-	if (rectSelected && ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsWindowHovered())
+	if (selectedIndex >=0
+		&& ImGui::IsWindowHovered()
+		&& ImGui::IsMouseDown(ImGuiMouseButton_Left))
 	{
 		ImVec2 mp = ImGui::GetMousePos();
-		rectX = (mp.x - p0.x) - dragOffset.x;
-		rectY = (mp.y - p0.y) - dragOffset.y;
+		float nx = (mp.x - p0.x) - dragOffset.x;
+		float ny = (mp.y - p0.y) - dragOffset.y;
 
-		rectX = Clamp(rectX, 0.0f, ImGui::GetWindowWidth() - 50.0f);
-		rectY = Clamp(rectY, 0.0f, ImGui::GetWindowHeight() - 50.0f);
+		nx = Clamp(nx, 0.0f, avail.x - objects[selectedIndex].w);
+		ny = Clamp(ny, 0.0f, avail.y - objects[selectedIndex].h);
+		objects[selectedIndex].x = nx;
+		objects[selectedIndex].y = ny;
 	}
 
-
-	ImVec2 a = ImVec2(p0.x + rectX, p0.y + rectY);
-	ImVec2 b = ImVec2(p0.x + rectX + rectW, p0.y + rectY + rectH);
-	ImU32 fill = ImGui::GetColorU32(rectColor);
-	draw->AddRectFilled(a, b, fill);
-
-	if (rectSelected)
+	for (int i = 0; i < (int)objects.size(); ++i)
 	{
-		draw->AddRect(a, b, IM_COL32(255, 255, 0, 255), 2.0f);
+		auto& R = objects[i];
+		ImVec2 a = ImVec2(p0.x + R.x, p0.y + R.y);
+		ImVec2 b = ImVec2(p0.x + R.x+ R.w, p0.y + R.y+ R.h);
+		ImU32 fill = ImGui::GetColorU32(R.color);
+		draw->AddRectFilled(a, b, fill);
+
+		if (i==selectedIndex)
+		{
+			draw->AddRect(a, b, IM_COL32(255, 255, 0, 255), 2.0f);
+		}
 	}
-
-	ImGui::SliderFloat("Rect X", &rectX, 0.0f, ImGui::GetWindowWidth() - 50.0f);
-	ImGui::SliderFloat("Rect Y", &rectY, 0.0f, ImGui::GetWindowHeight() - 50.0f);
-
-
 	ImGui::End();
-
 }
 
 int main() {
@@ -289,6 +301,10 @@ int main() {
 
 	float deltaTime = 0.0f;
 	float lastFrame = 0.0f;
+
+	objects.push_back({ 50,  60, 80, 80, ImVec4(1,0,0,1) });
+	objects.push_back({ 200, 150,100,60, ImVec4(0,1,0,1) });
+	objects.push_back({ 400, 300, 60,90, ImVec4(0,0,1,1) });
 
 	// ∑ª¥ı∏µ ∑Á«¡
 	while (!glfwWindowShouldClose(window))
