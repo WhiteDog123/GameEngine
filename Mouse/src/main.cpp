@@ -198,6 +198,9 @@ void DrawKeyDebug(GLFWwindow* window)
 	ImGui::End();
 }
 
+static float rectW = 50.0f;
+static float rectH = 50.0f;
+static ImVec4 rectColor = ImVec4(1, 0, 0, 1);
 static float rectX = 100.0f;
 static float rectY = 100.0f; 
 
@@ -206,6 +209,22 @@ static ImVec2 dragOffset;
 
 inline float Clamp(float v, float min, float max) {
 	return v < min ? min : (v > max ? max : v);
+}
+
+void DrawInspector()
+{
+	if (!rectSelected) return;
+
+	ImGui::Begin("Inspector");
+
+	ImGui::DragFloat("X", &rectX, 1.0f, 0.0f, ImGui::GetWindowWidth() - rectW);
+	ImGui::DragFloat("Y", &rectY, 1.0f, 0.0f, ImGui::GetWindowHeight() - rectH);
+
+	ImGui::DragFloat("Width", &rectW, 1.0f, 1.0f, ImGui::GetWindowWidth());
+	ImGui::DragFloat("Height", &rectH, 1.0f, 1.0f, ImGui::GetWindowHeight());
+
+	ImGui::ColorEdit4("Color", (float*)&rectColor);
+	ImGui::End();
 }
 
 void DrawSceneView(GLFWwindow* window)
@@ -241,8 +260,9 @@ void DrawSceneView(GLFWwindow* window)
 
 
 	ImVec2 a = ImVec2(p0.x + rectX, p0.y + rectY);
-	ImVec2 b = ImVec2(p0.x + rectX + 50.0f, p0.y + rectY + 50.0f);
-	draw->AddRectFilled(a, b, IM_COL32(255, 0, 0, 255));
+	ImVec2 b = ImVec2(p0.x + rectX + rectW, p0.y + rectY + rectH);
+	ImU32 fill = ImGui::GetColorU32(rectColor);
+	draw->AddRectFilled(a, b, fill);
 
 	if (rectSelected)
 	{
@@ -292,6 +312,7 @@ int main() {
 		DrawMouseDebug(window);
 		DrawKeyDebug(window);
 		DrawSceneView(window);
+		DrawInspector();
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
