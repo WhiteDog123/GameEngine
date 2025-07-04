@@ -3,6 +3,7 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <algorithm>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -197,19 +198,63 @@ void DrawKeyDebug(GLFWwindow* window)
 	ImGui::End();
 }
 
+static float rectX = 100.0f;
+static float rectY = 100.0f; 
+
+static bool rectSelected = false;
+static ImVec2 dragOffset;
+
+inline float Clamp(float v, float min, float max) {
+	return v < min ? min : (v > max ? max : v);
+}
+
 void DrawSceneView(GLFWwindow* window)
 {
-	ImGui::Begin("Scene");
+	ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoMove);
+
 
 	ImVec2 p0 = ImGui::GetWindowPos();
 	ImVec2 p1 = ImVec2(p0.x + ImGui::GetWindowWidth(), p0.y + ImGui::GetWindowHeight());
+	ImDrawList* draw = ImGui::GetWindowDrawList();
 
-	ImGui::GetWindowDrawList()->AddRectFilled(p0, p1, IM_COL32(50, 50, 50, 255));
+	draw->AddRectFilled(p0, p1, IM_COL32(50, 50, 50, 255));
+	
+	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		ImVec2 mp = ImGui::GetMousePos();
+		float lx = mp.x - p0.x, ly = mp.y - p0.y;
+		bool over = (lx >= rectX && lx <= rectX + 50 && ly >= rectY && ly <= rectY + 50);
+		rectSelected = over;
 
-	ImVec2 mousePos = ImGui::GetMousePos();
-	ImGui::Text("Mouse Pos in Scene: (%.1f, %.1f)", mousePos.x - p0.x, mousePos.y - p0.y);
+		if (over) dragOffset = ImVec2(lx - rectX, ly - rectY);
+	}
+
+	if (rectSelected && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+	{
+		ImVec2 mp = ImGui::GetMousePos();
+		rectX = (mp.x - p0.x) - dragOffset.x;
+		rectY = (mp.y - p0.y) - dragOffset.y;
+
+		rectX = Clamp(rectX, 0.0f, ImGui::GetWindowWidth() - 50.0f);
+		rectY = Clamp(rectY, 0.0f, ImGui::GetWindowHeight() - 50.0f);
+	}
+
+
+	ImVec2 a = ImVec2(p0.x + rectX, p0.y + rectY);
+	ImVec2 b = ImVec2(p0.x + rectX + 50.0f, p0.y + rectY + 50.0f);
+	draw->AddRectFilled(a, b, IM_COL32(255, 0, 0, 255));
+
+	if (rectSelected)
+	{
+		draw->AddRect(a, b, IM_COL32(255, 255, 0, 255), 2.0f);
+	}
+
+	ImGui::SliderFloat("Rect X", &rectX, 0.0f, ImGui::GetWindowWidth() - 50.0f);
+	ImGui::SliderFloat("Rect Y", &rectY, 0.0f, ImGui::GetWindowHeight() - 50.0f);
+
 
 	ImGui::End();
+
 }
 
 int main() {
