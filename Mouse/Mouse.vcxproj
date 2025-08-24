@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\imgui\backends;$(ProjectDir)thirdparty\imgui;$(ProjectDir)include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\imgui\backends;$(ProjectDir)thirdparty\imgui;$(ProjectDir)include;$(ProjectDir)src</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -131,6 +131,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Engine\Core\EntryPoint.cpp" />
+    <ClCompile Include="src\Game\GameApp.cpp" />
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="thirdparty\imgui\backends\imgui_impl_glfw.cpp" />
@@ -142,9 +144,12 @@
     <ClCompile Include="thirdparty\imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Engine\Core\Application.h" />
+    <ClInclude Include="src\Engine\Core\EntryPoint.h" />
     <ClInclude Include="src\Engine\Core\Time.h" />
     <ClInclude Include="src\Engine\Input\Actions.h" />
     <ClInclude Include="src\Engine\Rendering\Renderer2D.h" />
+    <ClInclude Include="src\Game\GameApp.h" />
     <ClInclude Include="src\main.h" />
     <ClInclude Include="thirdparty\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="thirdparty\imgui\backends\imgui_impl_opengl3.h" />
