@@ -9,9 +9,13 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "main.h"
+#include "Engine/Core/Time.h"
+#include "Engine/Input/Actions.h"	
+#include "Engine/Rendering/Renderer2D.h"
 
 static std::vector<std::string> logs;
 
+static Engine::Core::Time gTime;
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -77,7 +81,7 @@ void ShutdownImGui()
 	ImGui::DestroyContext();
 }
 
-void DrawColorPicker(float*  bgColor)
+void DrawColorPicker(float* bgColor)
 {
 
 	ImGui::Begin("Background Color");
@@ -144,11 +148,11 @@ void DrawMouseDebug(GLFWwindow* window)
 	bool rightDown = ImGui::IsMouseDown(ImGuiMouseButton_Right);
 
 	ImGui::Text("Left Button: %s", leftDown ? "Held" : "Released");
-	ImGui::Text("Right Button: %s", rightDown? "Held" : "Released");
+	ImGui::Text("Right Button: %s", rightDown ? "Held" : "Released");
 
 	if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 	{
-		logs.push_back("Left Click at ("+std::to_string(mousePos.x)+", " + std::to_string(mousePos.y)+")");
+		logs.push_back("Left Click at (" + std::to_string(mousePos.x) + ", " + std::to_string(mousePos.y) + ")");
 	}
 	if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 	{
@@ -278,10 +282,11 @@ void DrawSceneView(GLFWwindow* window, float deltaTime)
 
 	ImVec2 p0 = ImGui::GetCursorScreenPos();
 	ImVec2 avail = ImGui::GetContentRegionAvail();
-	ImDrawList* draw = ImGui::GetWindowDrawList();
 
-	draw->AddRectFilled(p0, ImVec2(p0.x + avail.x, p0.y + avail.y),
-		IM_COL32(50, 50, 50, 255));
+	ImDrawList* draw = ImGui::GetWindowDrawList();
+	Engine::Rendering::Renderer2D r;
+	r.Begin(draw, p0);
+	r.Rect(0.0, 0.0, avail.x, avail.y, IM_COL32(50, 50, 50, 255));
 
 	if (playMode)
 	{
@@ -290,117 +295,109 @@ void DrawSceneView(GLFWwindow* window, float deltaTime)
 			ResetRun(avail);
 			needReset = false;
 		}
-		if (gameState == GameState::Idle)
-		{
-			ResetRun(avail);
-		}
-		if (gameState == GameState::Playing)
-		{
-			scoreSec += deltaTime;
+		Engine::Input::InputState in = Engine::Input::PollInput(window);
 
-			const float speed = 260.0f;
-			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) player.y -= speed * deltaTime;
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) player.y += speed * deltaTime;
-			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) player.x -= speed * deltaTime;
-			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) player.x += speed * deltaTime;
-
-			player.x = Clamp(player.x, 0.0f, avail.x - player.w);
-			player.y = Clamp(player.y, 0.0f, avail.y - player.h);
-
-			spawnTimer += deltaTime;
-			float interval = 1.0f / spawnRate;
-			static std::mt19937 rng{ std::random_device{}() };
-			std::uniform_real_distribution<float> rx(0.0f, 1.0f);
-
-			while (spawnTimer >= interval)
+		Engine::Core::StepFixed(gTime, deltaTime, [&](float dt)
 			{
-				spawnTimer -= interval;
-				spawnRate = std::min(12.0f, spawnRate + 0.05f);
+				if (gameState != GameState::Playing) return;
 
-				int side = int(rx(rng) * 4.0f);
-				Bullet b; 
-				b.w = 10.0f;
-				b.h = 10.0f;
-				b.color = ImVec4(1, 0.25f, 0.25f, 1);
-				float spd = 140.0f + rx(rng) * 160.0f;
+				const float speed = 260.0f;
+				float dx = 0.f, dy = 0.f;
 
-				if (side == 0) { b.x = rx(rng) * (avail.x - b.w); b.y = -b.h;  b.vx = 0; b.vy = spd; }
-				if (side == 1) { b.x = rx(rng) * (avail.x - b.w); b.y = avail.y + b.h; b.vx = 0; b.vy = -spd; }
-				if (side == 2) { b.x = -b.w; b.y = rx(rng) * (avail.y - b.h); b.vx = spd; b.vy = 0; }
-				if (side == 3) { b.x = avail.x + b.w; b.y = rx(rng) * (avail.y - b.h); b.vx = -spd; b.vy = 0; }
+				if (in.held[(int)Engine::Input::Action::MoveLeft]) dx -= 1.f;
+				if (in.held[(int)Engine::Input::Action::MoveRight]) dx += 1.f;
+				if (in.held[(int)Engine::Input::Action::MoveUp]) dy -= 1.f;
+				if (in.held[(int)Engine::Input::Action::MoveDown]) dy += 1.f;
 
-				b.vx += (rx(rng) - 0.5f) * 60.0f;
-				b.vy += (rx(rng) - 0.5f) * 60.0f;
+				player.x += speed * dx * dt;
+				player.y += speed * dy * dt;
+				player.x = Clamp(player.x, 0.0f, avail.x - player.w);
+				player.y = Clamp(player.y, 0.0f, avail.y - player.h);
 
-				bullets.push_back(b);
-			}
+				spawnTimer += dt;
+				float interval = 1.0f / spawnRate;
+				static std::mt19937 rng{ std::random_device{}() };
+				std::uniform_real_distribution<float> rx(0.0f, 1.0f);
 
-			for (int i = (int)bullets.size() - 1; i >= 0; --i)
-			{
-				auto& b = bullets[i];
-				b.x += b.vx * deltaTime;
-				b.y += b.vy * deltaTime;
-				if (b.x < -20 || b.y < -20 || b.x > avail.x + 20 || b.y > avail.y + 20)
+				while (spawnTimer >= interval)
 				{
-					bullets.erase(bullets.begin() + i);
-				}
-			}
+					spawnTimer -= interval;
+					spawnRate = std::min(12.0f, spawnRate + 0.05f);
 
-			for (auto& b : bullets)
-			{
-				if (OverlapRB(player, b))
+					int side = int(rx(rng) * 4.0f);
+					Bullet b;
+					b.w = 10.f;
+					b.h = 10.f;
+					b.color = ImVec4(1, 0.25f, 0.25f, 1);
+					float spd = 140.0f + rx(rng) * 160.0f;
+
+					if (side == 0) { b.x = rx(rng) * (avail.x - b.w); b.y = -b.h; b.vx = 0; b.vy = spd; }
+					if (side == 1) { b.x = rx(rng) * (avail.x - b.w); b.y = avail.y + b.h; b.vx = 0;     b.vy = -spd; }
+					if (side == 2) { b.x = -b.w;                    b.y = rx(rng) * (avail.y - b.h); b.vx = spd;  b.vy = 0; }
+					if (side == 3) { b.x = avail.x + b.w;           b.y = rx(rng) * (avail.y - b.h); b.vx = -spd;  b.vy = 0; }
+					b.vx += (rx(rng) - 0.5f) * 60.0f;
+					b.vy += (rx(rng) - 0.5f) * 60.0f;
+					bullets.push_back(b);
+				}
+
+				for (int i = (int)bullets.size() - 1; i >= 0; --i)
 				{
-					gameState = GameState::GameOver;
-					logs.push_back("Game Over! Score: " + std::to_string(scoreSec) + "s");
-					break;
+					auto& b = bullets[i];
+					b.x += b.vx * dt;
+					b.y += b.vy * dt;
+					if (b.x < -20 || b.y < -20 || b.x > avail.x + 20 || b.y > avail.y + 20)
+					{
+						bullets.erase(bullets.begin() + i);
+					}
 				}
-			}
-		}
-	}
 
+				for (auto& b : bullets)
+				{
+					if (!(player.x + player.w < b.x || b.x + b.w < player.x ||
+						player.y + player.h < b.y || b.y + b.h < player.y))
+					{
+						gameState = GameState::GameOver;
+						logs.push_back("Game Over! Score: " + std::to_string(scoreSec) + "s");
+						break;
+					}
+				}
 
-	if (playMode)
-	{
-		ImVec2 p0 = ImGui::GetCursorScreenPos();
-		ImVec2 avail = ImGui::GetContentRegionAvail();
-		ImDrawList* draw = ImGui::GetWindowDrawList();
+				if (gameState == GameState::Playing) scoreSec += dt;
+			});
 
-		auto pA = ImVec2(p0.x + player.x, p0.y + player.y);
-		auto pB = ImVec2(p0.x + player.x + player.w, p0.y + player.y + player.h);
-		draw->AddRectFilled(pA, pB, IM_COL32(255, 255, 0, 255));
-
-		for (auto& b : bullets)
-		{
-			auto a = ImVec2(p0.x + b.x, p0.y + b.y);
-			auto c = ImVec2(p0.x + b.x + b.w, p0.y + b.y + b.h);
-			draw->AddRectFilled(a, c, IM_COL32(255, 70, 70, 255));
-		}
-
-		ImGui::SetCursorScreenPos(ImVec2(p0.x + 8, p0.y + 8));
-		ImGui::Text("Score: %.1fs | Bullets: %d", scoreSec, (int)bullets.size());
-
+		r.Text(ImVec2(8, 8), IM_COL32_WHITE, (std::string("Score: ") + std::to_string(scoreSec) + "s").c_str());
 		if (gameState == GameState::GameOver)
 		{
 			ImVec2 center = ImVec2(p0.x + avail.x * 0.5f - 90, p0.y + avail.y * 0.5f - 30);
 			ImGui::SetCursorScreenPos(center);
 			ImGui::BeginChild("GameOver", ImVec2(180, 60), true);
-			ImGui::Text("Game Over!");
+			ImGui::Text("Game Over");
 			ImGui::Text("Score: %.1fs", scoreSec);
-			if (ImGui::Button("Restart"))
+			if (ImGui::Button("Restart (R)")) { ResetRun(avail); }
+			ImGui::EndChild();
+			if (Engine::Input::PollInput(window).held[(int)Engine::Input::Action::Restart])
 			{
 				ResetRun(avail);
 			}
-			ImGui::EndChild();
+		}
+
+		if (playMode)
+		{
+			r.Rect(player.x, player.y, player.w, player.h, IM_COL32(255, 255, 0, 255));
+			for (auto& b : bullets)
+			{
+				r.Rect(b.x, b.y, b.w, b.h, IM_COL32(255, 70, 70, 255));
+			}
 		}
 	}
 
-
+	r.End();
 	ImGui::End();
 }
 
 int main() {
 	GLFWwindow* window = nullptr;
-	if(!InitGLFW(&window) || !InitGLAD())
+	if (!InitGLFW(&window) || !InitGLAD())
 	{
 		return -1;
 	}
@@ -411,9 +408,6 @@ int main() {
 	float deltaTime = 0.0f;
 	float lastFrame = 0.0f;
 
-	objects.push_back({ 50,  60, 80, 80, ImVec4(1,0,0,1) });
-	objects.push_back({ 200, 150,100,60, ImVec4(0,1,0,1) });
-	objects.push_back({ 400, 300, 60,90, ImVec4(0,0,1,1) });
 
 	// ∑ª¥ı∏µ ∑Á«¡
 	while (!glfwWindowShouldClose(window))
@@ -440,6 +434,7 @@ int main() {
 			playMode = !playMode;
 			if (playMode)
 			{
+				gTime.accumulator = 0.0f;
 				gameState = GameState::Idle;
 				needReset = true;
 			}
@@ -456,25 +451,8 @@ int main() {
 		DrawLogWindow();
 		DrawMouseDebug(window);
 		DrawKeyDebug(window);
-
-		if (playMode)
-		{
-			ImVec2 p0 = ImGui::GetCursorScreenPos();
-			ImVec2 avail = ImGui::GetContentRegionAvail();
-			for (auto& R : objects)
-			{
-				R.y += 25.0f * deltaTime;
-				R.y = Clamp(R.y, 0.0f, avail.y - R.h);
-			}
-
-			DrawSceneView(window, deltaTime);
-		}
-		else
-		{
-			DrawSceneView(window, deltaTime);
-			DrawInspector();
-		}
-
+		DrawSceneView(window, deltaTime);
+		DrawInspector();
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
